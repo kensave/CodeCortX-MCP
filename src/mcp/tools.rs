@@ -177,7 +177,7 @@ impl ServerHandler for CodeAnalysisTools {
         let tools = vec![
             Tool {
                 name: "index_code".into(),
-                description: Some("Index source code files in a directory to build symbol table for fast lookups".into()),
+                description: Some("REQUIRED FIRST - RUN ONCE: Index source code files in a directory to build symbol table for fast lookups. Must be run once before any other tools will work. File watching will remain active for the rest of the session.".into()),
                 input_schema: Arc::new(serde_json::from_value(json!({
                     "type": "object",
                     "properties": {
