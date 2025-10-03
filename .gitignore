@@ -1,0 +1,47 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+*.tmp
+
+# Planning documentation (exclude from repo)
+planning/
+idea-honing/
+implementation/
+examples/
+AI-EXECUTION-GUIDE.md
+IMPLEMENTATION_STATUS.md
+CHECKPOINT.md
+
+# Test artifacts
+/test-repos/
+/temp/
+*.test
+
+# Build artifacts
+/dist/
+/build/

@@ -1,0 +1,104 @@
+[package]
+name = "codecortx-mcp"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kenneth J. Sanchez"]
+description = "CodeCortXMCP - A lightning-fast, language-agnostic code analysis MCP server built in Rust"
+homepage = "https://github.com/kensave/codecortx-mcp"
+repository = "https://github.com/kensave/codecortx-mcp"
+license = "Apache-2.0"
+keywords = ["mcp", "code-analysis", "tree-sitter", "language-server", "rust"]
+categories = ["development-tools", "parsing", "text-processing"]
+readme = "README.md"
+exclude = [
+    "samples/*",
+    "target/*",
+    ".git/*",
+    "*.log"
+]
+
+[dependencies]
+# Official MCP SDK
+rmcp = { version = "0.7.0", features = ["server", "macros", "transport-io"] }
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bincode = "2.0"
+
+# Concurrent data structures
+dashmap = "6.0"
+
+# Tree-sitter for parsing
+tree-sitter = "0.25.10"
+tree-sitter-rust = "0.24.0"
+tree-sitter-python = "0.25.0"
+tree-sitter-c = "0.24.1"
+tree-sitter-cpp = "0.23.0"
+tree-sitter-java = "0.23.0"
+tree-sitter-go = "0.25.0"
+tree-sitter-javascript = "0.25.0"
+tree-sitter-typescript = "0.23.0"
+tree-sitter-ruby = "0.23.1"
+tree-sitter-c-sharp = "0.23.1"
+tree-sitter-kotlin-ng = "1.1.0"
+tree-sitter-scala = "0.24.0"
+tree-sitter-swift = "0.7.1"
+tree-sitter-php = "0.24.2"
+tree-sitter-objc = "3.0.2"
+
+# Async runtime
+tokio = { version = "1.47", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+
+# File watching
+notify = "8.2"
+
+# Path utilities
+walkdir = "2.5.0"
+ignore = "0.4.23"
+
+# BM25 search
+bm25 = "2.3"
+
+# Hashing
+sha2 = "0.10"
+
+# JSON Schema for MCP tools (match rmcp version)
+schemars = "1.0"
+
+# Error handling
+thiserror = "2.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# System info
+num_cpus = "1.16"
+dirs = "6.0"
+
+# Fuzzy matching
+fuzzy-matcher = "0.3"
+
+
+[build-dependencies]
+cc = "1.0"
+
+[dev-dependencies]
+tempfile = "3.8"
+criterion = "0.7"
+
+[[bench]]
+name = "performance"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+overflow-checks = false
