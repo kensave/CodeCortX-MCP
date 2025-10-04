@@ -1,6 +1,6 @@
 [package]
 name = "codecortx-mcp"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Kenneth J. Sanchez"]
 description = "CodeCortXMCP - A lightning-fast, language-agnostic code analysis MCP server built in Rust"
