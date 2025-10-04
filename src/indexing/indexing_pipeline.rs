@@ -460,9 +460,12 @@ impl IndexingPipeline {
             let start_col = reference.location.start_column as usize;
             let end_col = reference.location.end_column as usize;
 
-            // Ensure valid slice bounds
-            if start_col < line.len() && end_col <= line.len() && start_col <= end_col {
-                return Some(line[start_col..end_col].to_string());
+            // Convert to character indices for Unicode safety
+            let chars: Vec<char> = line.chars().collect();
+            
+            // Ensure valid slice bounds using character indices
+            if start_col < chars.len() && end_col <= chars.len() && start_col <= end_col {
+                return Some(chars[start_col..end_col].iter().collect());
             }
         }
 
