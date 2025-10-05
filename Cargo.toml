@@ -19,7 +19,7 @@ exclude = [
 
 [dependencies]
 # Official MCP SDK
-rmcp = { version = "0.7.0", features = ["server", "macros", "transport-io"] }
+rmcp = { version = "0.8.0", features = ["server", "macros", "transport-io"] }
 anyhow = "1.0"
 
 # Serialization

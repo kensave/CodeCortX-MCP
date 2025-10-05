@@ -1,11 +1,13 @@
 use crate::mcp::outline_tools::OutlineTools;
 use crate::models::{Reference, Symbol, SymbolType};
-use crate::utils::watcher::FileWatcher;
+use crate::utils::{FileWatcher, PathResolver};
 use crate::{IndexingPipeline, SymbolStore};
 use rmcp::{
     model::{
-        CallToolRequestParam, CallToolResult, Content, ErrorCode, ErrorData, ListToolsResult,
-        PaginatedRequestParam, ServerCapabilities, ServerInfo, Tool,
+        CallToolRequestParam, CallToolResult, Content, ErrorCode, ErrorData, GetPromptRequestParam,
+        GetPromptResult, ListPromptsResult, ListToolsResult, PaginatedRequestParam, Prompt,
+        PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole, ServerCapabilities,
+        ServerInfo, Tool,
     },
     service::{RequestContext, RoleServer},
     ServerHandler,
@@ -160,9 +162,12 @@ impl CodeAnalysisTools {
 impl ServerHandler for CodeAnalysisTools {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .enable_prompts()
+                .build(),
             instructions: Some(
-                "CodeCortext MCP server for analyzing source code symbols and references"
+                "Roberto MCP server for analyzing source code symbols and references"
                     .to_string(),
             ),
             ..Default::default()
@@ -346,6 +351,48 @@ impl ServerHandler for CodeAnalysisTools {
         })
     }
 
+    async fn list_prompts(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListPromptsResult, ErrorData> {
+        let prompts = vec![
+            Prompt {
+                name: "explain".into(),
+                description: Some("Provide a structured explanation of a symbol (function, class, etc.) by analyzing its definition, usage, and relationships".into()),
+                arguments: Some(vec![
+                    PromptArgument {
+                        name: "symbol_name".into(),
+                        description: Some("Name of the symbol to explain (e.g., 'Parser', 'parse_code')".into()),
+                        required: Some(true),
+                        title: None,
+                    }
+                ]),
+                title: None,
+                icons: None,
+            },
+            Prompt {
+                name: "explore".into(),
+                description: Some("Efficiently explore a codebase by analyzing top-level structures and key components with minimal token usage".into()),
+                arguments: Some(vec![
+                    PromptArgument {
+                        name: "project_path".into(),
+                        description: Some("Path to the main project directory to explore (defaults to current directory)".into()),
+                        required: Some(false),
+                        title: None,
+                    }
+                ]),
+                title: None,
+                icons: None,
+            }
+        ];
+
+        Ok(ListPromptsResult {
+            prompts,
+            next_cursor: None,
+        })
+    }
+
     async fn call_tool(
         &self,
         request: CallToolRequestParam,
@@ -364,6 +411,111 @@ impl ServerHandler for CodeAnalysisTools {
                 "Method not found",
                 None,
             )),
+        }
+    }
+
+    async fn get_prompt(
+        &self,
+        request: GetPromptRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<GetPromptResult, ErrorData> {
+        match request.name.as_str() {
+            "explain" => {
+                let symbol_name = request
+                    .arguments
+                    .as_ref()
+                    .and_then(|args| args.get("symbol_name"))
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| ErrorData {
+                        code: ErrorCode::INVALID_PARAMS,
+                        message: "Missing required argument: symbol_name".into(),
+                        data: None,
+                    })?;
+
+                let prompt_text = format!(r#"I need to explain the symbol "{}" in a structured way. Please follow these steps methodically:
+
+1. **Get Symbol Information**
+   - Use get_symbol tool with name="{}" and include_source=false
+   - This will show the symbol's type, location, and basic info
+
+2. **Analyze Symbol Type and Get Additional Context**
+   - If it's a CLASS/STRUCT/INTERFACE:
+     * Use get_file_outline tool on the file containing this symbol
+     * This shows all methods, properties, and structure
+   
+   - If it's a FUNCTION/METHOD:
+     * Use get_symbol_references tool with name="{}"
+     * This shows where and how it's used throughout the codebase
+
+3. **Provide Structured Explanation**
+   Based on the gathered information, explain:
+   - **Purpose**: What this symbol does/represents
+   - **Type**: Function, class, method, etc.
+   - **Location**: File and line number
+   - **Key Details**: Parameters, return type, visibility
+   - **Usage Context**: How it's used (if method/function) or what it contains (if class)
+   - **Relationships**: Dependencies or related symbols
+
+Keep the explanation concise but comprehensive. Focus on practical understanding."#, symbol_name, symbol_name, symbol_name);
+
+                Ok(GetPromptResult {
+                    description: Some(format!("Structured explanation of symbol '{}'", symbol_name)),
+                    messages: vec![PromptMessage {
+                        role: PromptMessageRole::User,
+                        content: PromptMessageContent::Text { text: prompt_text },
+                    }],
+                })
+            }
+            "explore" => {
+                let project_path = request
+                    .arguments
+                    .as_ref()
+                    .and_then(|args| args.get("project_path"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(".");
+
+                let prompt_text = format!(r#"I need to efficiently explore the codebase at "{}" with MINIMAL token usage. Follow this strategic approach:
+
+**PHASE 1: High-Level Architecture (Token-Efficient)**
+1. Use get_directory_outline with path="{}" and includes=["classes", "structs", "interfaces"]
+   - This shows ALL top-level classes/structs/interfaces across the project
+   - Identify 3-5 most important/central components based on names and structure
+
+**PHASE 2: Strategic Deep-Dive (Only for Key Components)**
+For the 2-3 MOST IMPORTANT components identified:
+2. Use get_file_outline on their files to see full structure with methods/properties
+3. For CORE methods (constructors, main business logic, public APIs):
+   - Use get_symbol with include_source=true (ONLY for 2-3 critical methods)
+   - Use get_symbol_references to understand usage patterns
+
+**PHASE 3: Targeted Code Search (If Needed)**
+4. ONLY if unclear about key concepts, use code_search with specific queries like:
+   - "main entry point" or "initialization" or "core algorithm"
+   - Limit to 3-5 results max
+
+**DELIVERABLE: Concise Architecture Summary**
+Provide a brief overview covering:
+- **Project Purpose**: What this codebase does
+- **Key Components**: 3-5 main classes/structs and their roles  
+- **Architecture Pattern**: How components interact
+- **Entry Points**: Main functions or initialization paths
+- **Notable Patterns**: Any interesting design decisions
+
+BE EXTREMELY FRUGAL - Skip details that don't contribute to understanding the overall architecture."#, project_path, project_path);
+
+                Ok(GetPromptResult {
+                    description: Some(format!("Efficient exploration of project at '{}'", project_path)),
+                    messages: vec![PromptMessage {
+                        role: PromptMessageRole::User,
+                        content: PromptMessageContent::Text { text: prompt_text },
+                    }],
+                })
+            }
+            _ => Err(ErrorData {
+                code: ErrorCode::METHOD_NOT_FOUND,
+                message: format!("Unknown prompt: {}", request.name).into(),
+                data: None,
+            }),
         }
     }
 }
@@ -386,15 +538,8 @@ impl CodeAnalysisTools {
                 )
             })?;
 
-        let path = PathBuf::from(&params.path);
-
-        if !path.exists() {
-            return Err(ErrorData::new(
-                ErrorCode::INVALID_PARAMS,
-                format!("Path does not exist: {}", params.path),
-                None,
-            ));
-        }
+        // Use comprehensive path resolution
+        let path = PathResolver::resolve_file_or_directory_path(&params.path)?;
 
         let pipeline = get_indexing_pipeline();
         let mut pipeline_guard = pipeline.lock().await;

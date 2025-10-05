@@ -1,8 +1,8 @@
 use crate::mcp::tools::get_symbol_store;
 use crate::models::{Symbol, SymbolType, Visibility};
+use crate::utils::PathResolver;
 use rmcp::model::{CallToolResult, Content, ErrorCode, ErrorData};
 use serde_json::{Map, Value};
-use std::path::PathBuf;
 
 pub struct OutlineTools;
 
@@ -17,9 +17,20 @@ impl OutlineTools {
             .and_then(|v| v.as_str())
             .ok_or_else(|| ErrorData::new(ErrorCode::INVALID_PARAMS, "Missing file_path", None))?;
 
-        let path_buf = PathBuf::from(file_path);
+        // Use comprehensive path resolution
+        let canonical_path = PathResolver::resolve_file_path(file_path)?;
+
         let store = get_symbol_store();
-        let symbols = store.get_symbols_by_file(&path_buf);
+        let symbols = store.get_symbols_by_file(&canonical_path);
+
+        // Check if file has symbols (is indexed)
+        if symbols.is_empty() {
+            return Err(ErrorData::new(
+                ErrorCode::INVALID_PARAMS, 
+                format!("No symbols found for file '{}'. Make sure the file is indexed first.", file_path), 
+                None
+            ));
+        }
 
         let mut outline = std::collections::BTreeMap::new();
         for mut symbol in symbols {
@@ -56,6 +67,9 @@ impl OutlineTools {
                 ErrorData::new(ErrorCode::INVALID_PARAMS, "Missing directory_path", None)
             })?;
 
+        // Use comprehensive path resolution
+        let canonical_path = PathResolver::resolve_directory_path(directory_path)?;
+
         let includes: Vec<String> = args
             .get("includes")
             .and_then(|v| v.as_array())
@@ -79,8 +93,8 @@ impl OutlineTools {
             let symbol = entry.value();
             let file_path = &symbol.location.file;
 
-            // Check if file is in the target directory
-            if file_path.starts_with(directory_path) {
+            // Check if file is in the target directory using canonical paths
+            if file_path.starts_with(&canonical_path) {
                 let should_include = match symbol.symbol_type {
                     SymbolType::Class => includes.contains(&"classes".to_string()),
                     SymbolType::Struct => includes.contains(&"structs".to_string()),
@@ -94,7 +108,7 @@ impl OutlineTools {
                 };
 
                 if should_include {
-                    let rel_path = file_path.strip_prefix(directory_path).unwrap_or(file_path);
+                    let rel_path = file_path.strip_prefix(&canonical_path).unwrap_or(file_path);
                     let file_name = rel_path.to_string_lossy().to_string();
 
                     file_symbols
