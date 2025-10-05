@@ -1,4 +1,8 @@
-# Roberto MCP Server
+# Roberto MCP
+
+<div align="center">
+  <img src="RobertoMCP.png" alt="Roberto MCP Logo" width="200"/>
+</div>
 
 A lightning-fast, language-agnostic code analysis MCP (Model Context Protocol) server built in Rust. Provides instant symbol lookups, reference tracking, and semantic code search for large codebases with performance as a first-class citizen.
 
