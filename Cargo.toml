@@ -1,6 +1,6 @@
 [package]
 name = "roberto-mcp"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Kenneth J. Sanchez"]
 description = "Roberto MCP - A lightning-fast, language-agnostic code analysis MCP server built in Rust"
